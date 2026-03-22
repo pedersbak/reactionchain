@@ -366,6 +366,7 @@ export const NetworkTestPage: React.FC = () => {
                     onChange={(e) => { userTypedRef.current = true; setInputValue(e.target.value); }}
                     onKeyDown={handleKeyDown}
                     onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     placeholder="Name or CVR…"
                     style={{
                       padding: "7px 11px", borderRadius: 7,
@@ -387,7 +388,6 @@ export const NetworkTestPage: React.FC = () => {
                       {suggestions.map((s, i) => (
                         <li
                           key={s.id}
-                          onTouchEnd={(e) => { e.preventDefault(); pickSuggestion(s); }}
                           onClick={() => pickSuggestion(s)}
                           onMouseEnter={() => setActiveIndex(i)}
                           style={{

@@ -234,6 +234,7 @@ export const MobileNetworkPage: React.FC = () => {
               onChange={(e) => { userTypedRef.current = true; setInputValue(e.target.value); }}
               onKeyDown={handleKeyDown}
               onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               placeholder="Search company or person…"
               style={{
                 flex: 1, padding: "10px 14px", borderRadius: 8,
@@ -278,7 +279,6 @@ export const MobileNetworkPage: React.FC = () => {
               {suggestions.map((s, i) => (
                 <li
                   key={s.id}
-                  onTouchEnd={(e) => { e.preventDefault(); pickSuggestion(s); }}
                   onClick={() => pickSuggestion(s)}
                   style={{
                     padding: "11px 14px", cursor: "pointer",
