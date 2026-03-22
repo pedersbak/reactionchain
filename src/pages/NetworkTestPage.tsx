@@ -35,9 +35,7 @@ export const NetworkTestPage: React.FC = () => {
   const [suggestions, setSuggestions] = useState<CvrSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const userTypedRef = useRef(false);
-  const skipBlurRef = useRef(false);
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [graphSize, setGraphSize] = useState<{ w: number; h: number }>({ w: GRAPH_DIMENSIONS.width, h: GRAPH_DIMENSIONS.height });
 
@@ -69,16 +67,6 @@ export const NetworkTestPage: React.FC = () => {
       setActiveIndex(-1);
     });
   }, [debouncedInput]);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   const { nodes, links, loading, error } = useNetworkData(entityId, depth);
 
@@ -360,14 +348,14 @@ export const NetworkTestPage: React.FC = () => {
               <div style={{ padding: "1rem 1rem 0" }}>
                 <div style={sectionLabel}>Search</div>
 
-                <div ref={wrapperRef} style={{ position: "relative", marginBottom: 8 }}>
+                <div style={{ position: "relative", marginBottom: 8 }}>
                   <input
                     type="text"
                     value={inputValue}
                     onChange={(e) => { userTypedRef.current = true; setInputValue(e.target.value); }}
                     onKeyDown={handleKeyDown}
                     onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                    onBlur={() => { if (skipBlurRef.current) { skipBlurRef.current = false; return; } setTimeout(() => setShowSuggestions(false), 200); }}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 300)}
                     placeholder="Name or CVR…"
                     style={{
                       padding: "7px 11px", borderRadius: 7,
@@ -378,8 +366,6 @@ export const NetworkTestPage: React.FC = () => {
                   />
                   {showSuggestions && (
                     <ul
-                      onMouseDown={(e) => e.preventDefault()}
-                      onTouchStart={() => { skipBlurRef.current = true; }}
                       style={{
                         position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
                         margin: 0, padding: 0, listStyle: "none",
@@ -390,8 +376,8 @@ export const NetworkTestPage: React.FC = () => {
                       {suggestions.map((s, i) => (
                         <li
                           key={s.id}
-                          onTouchEnd={() => { skipBlurRef.current = false; pickSuggestion(s); }}
-                          onClick={() => pickSuggestion(s)}
+                          onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s); }}
+                          onTouchStart={(e) => { e.preventDefault(); pickSuggestion(s); }}
                           onMouseEnter={() => setActiveIndex(i)}
                           style={{
                             padding: "8px 12px", cursor: "pointer",

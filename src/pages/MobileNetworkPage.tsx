@@ -34,9 +34,7 @@ export const MobileNetworkPage: React.FC = () => {
   const [suggestions, setSuggestions] = useState<CvrSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const userTypedRef = useRef(false);
-  const skipBlurRef = useRef(false);
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [graphSize, setGraphSize] = useState<{ w: number; h: number }>({
     w: GRAPH_DIMENSIONS.width,
@@ -67,16 +65,6 @@ export const MobileNetworkPage: React.FC = () => {
       setActiveIndex(-1);
     });
   }, [debouncedInput]);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   const { nodes, links, loading, error } = useNetworkData(entityId, depth);
 
@@ -227,7 +215,7 @@ export const MobileNetworkPage: React.FC = () => {
 
       {/* Search bar */}
       <div style={{ padding: "0.65rem 0.75rem", flexShrink: 0, zIndex: 10 }}>
-        <div ref={wrapperRef} style={{ position: "relative" }}>
+        <div style={{ position: "relative" }}>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               type="text"
@@ -235,7 +223,7 @@ export const MobileNetworkPage: React.FC = () => {
               onChange={(e) => { userTypedRef.current = true; setInputValue(e.target.value); }}
               onKeyDown={handleKeyDown}
               onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-              onBlur={() => { if (skipBlurRef.current) { skipBlurRef.current = false; return; } setTimeout(() => setShowSuggestions(false), 200); }}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 300)}
               placeholder="Search company or person…"
               style={{
                 flex: 1, padding: "10px 14px", borderRadius: 8,
@@ -269,8 +257,6 @@ export const MobileNetworkPage: React.FC = () => {
 
           {showSuggestions && (
             <ul
-              onMouseDown={(e) => e.preventDefault()}
-              onTouchStart={() => { skipBlurRef.current = true; }}
               style={{
                 position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
                 margin: 0, padding: 0, listStyle: "none",
@@ -281,8 +267,8 @@ export const MobileNetworkPage: React.FC = () => {
               {suggestions.map((s, i) => (
                 <li
                   key={s.id}
-                  onTouchEnd={() => { skipBlurRef.current = false; pickSuggestion(s); }}
-                  onClick={() => pickSuggestion(s)}
+                  onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s); }}
+                  onTouchStart={(e) => { e.preventDefault(); pickSuggestion(s); }}
                   style={{
                     padding: "11px 14px", cursor: "pointer",
                     background: i === activeIndex ? "#1e2638" : "transparent",
@@ -318,6 +304,7 @@ export const MobileNetworkPage: React.FC = () => {
           position: "relative",
           marginBottom: sheetHeight,
           transition: "margin-bottom 0.3s ease",
+          pointerEvents: showSuggestions ? "none" : "auto",
         }}
       >
         {loading && (
