@@ -375,17 +375,19 @@ export const NetworkTestPage: React.FC = () => {
                     }}
                   />
                   {showSuggestions && (
-                    <ul style={{
-                      position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
-                      margin: 0, padding: 0, listStyle: "none",
-                      background: "#161b27", border: "1px solid #2a3347",
-                      borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-                      zIndex: 50,
-                    }}>
+                    <ul
+                      onMouseDown={(e) => e.preventDefault()}
+                      style={{
+                        position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+                        margin: 0, padding: 0, listStyle: "none",
+                        background: "#161b27", border: "1px solid #2a3347",
+                        borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+                        zIndex: 50, maxHeight: "40vh", overflowY: "auto",
+                      }}>
                       {suggestions.map((s, i) => (
                         <li
                           key={s.id}
-                          onPointerDown={() => pickSuggestion(s)}
+                          onClick={() => pickSuggestion(s)}
                           onMouseEnter={() => setActiveIndex(i)}
                           style={{
                             padding: "8px 12px", cursor: "pointer",
