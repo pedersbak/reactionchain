@@ -385,7 +385,7 @@ export const NetworkTestPage: React.FC = () => {
                       {suggestions.map((s, i) => (
                         <li
                           key={s.id}
-                          onMouseDown={() => pickSuggestion(s)}
+                          onPointerDown={() => pickSuggestion(s)}
                           onMouseEnter={() => setActiveIndex(i)}
                           style={{
                             padding: "8px 12px", cursor: "pointer",

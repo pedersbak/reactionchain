@@ -267,7 +267,7 @@ export const MobileNetworkPage: React.FC = () => {
               {suggestions.map((s, i) => (
                 <li
                   key={s.id}
-                  onMouseDown={() => pickSuggestion(s)}
+                  onPointerDown={() => pickSuggestion(s)}
                   style={{
                     padding: "11px 14px", cursor: "pointer",
                     background: i === activeIndex ? "#1e2638" : "transparent",
