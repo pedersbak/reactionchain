@@ -4,8 +4,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# The build context is the reactionchain folder itself.
-# iris-ui is a git submodule at iris-ui/ inside this repo.
+# Copy iris-ui submodule to ../iris-ui relative to reactionchain/
+# so the vite alias "iris-ui" → "../iris-ui/src" resolves correctly.
+COPY iris-ui/ ./iris-ui/
 COPY . ./reactionchain/
 
 WORKDIR /app/reactionchain
