@@ -278,6 +278,7 @@ export const MobileNetworkPage: React.FC = () => {
               {suggestions.map((s, i) => (
                 <li
                   key={s.id}
+                  onTouchEnd={(e) => { e.preventDefault(); pickSuggestion(s); }}
                   onClick={() => pickSuggestion(s)}
                   style={{
                     padding: "11px 14px", cursor: "pointer",
