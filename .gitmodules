@@ -1,0 +1,3 @@
+[submodule "iris-ui"]
+	path = iris-ui
+	url = https://github.com/pedersbak/iris-ui.git
