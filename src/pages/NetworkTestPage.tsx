@@ -37,6 +37,7 @@ export const NetworkTestPage: React.FC = () => {
   const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const userTypedRef = useRef(false);
+  const skipBlurRef = useRef(false);
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [graphSize, setGraphSize] = useState<{ w: number; h: number }>({ w: GRAPH_DIMENSIONS.width, h: GRAPH_DIMENSIONS.height });
 
@@ -366,7 +367,7 @@ export const NetworkTestPage: React.FC = () => {
                     onChange={(e) => { userTypedRef.current = true; setInputValue(e.target.value); }}
                     onKeyDown={handleKeyDown}
                     onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    onBlur={() => { if (skipBlurRef.current) { skipBlurRef.current = false; return; } setTimeout(() => setShowSuggestions(false), 200); }}
                     placeholder="Name or CVR…"
                     style={{
                       padding: "7px 11px", borderRadius: 7,
@@ -378,6 +379,7 @@ export const NetworkTestPage: React.FC = () => {
                   {showSuggestions && (
                     <ul
                       onMouseDown={(e) => e.preventDefault()}
+                      onTouchStart={() => { skipBlurRef.current = true; }}
                       style={{
                         position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
                         margin: 0, padding: 0, listStyle: "none",
@@ -388,6 +390,7 @@ export const NetworkTestPage: React.FC = () => {
                       {suggestions.map((s, i) => (
                         <li
                           key={s.id}
+                          onTouchEnd={() => { skipBlurRef.current = false; pickSuggestion(s); }}
                           onClick={() => pickSuggestion(s)}
                           onMouseEnter={() => setActiveIndex(i)}
                           style={{
