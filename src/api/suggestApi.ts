@@ -3,7 +3,7 @@ export interface CvrSuggestion {
   name: string;
 }
 
-const SUGGEST_BASE = import.meta.env.DEV ? "/api/suggest" : "https://netvrk.nu/suggest";
+const SUGGEST_BASE = "/api/suggest";
 
 export async function suggestCvr(query: string): Promise<CvrSuggestion[]> {
   if (query.length < 3) return [];

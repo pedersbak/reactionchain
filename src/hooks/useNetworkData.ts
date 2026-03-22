@@ -93,12 +93,12 @@ export interface UseNetworkDataResult {
 }
 
 export function useNetworkData(
-  entityId: number,
+  entityId: number | null,
   depth = 2
 ): UseNetworkDataResult {
   const [nodes, setNodes] = useState<NetworkNodeData[]>([]);
   const [links, setLinks] = useState<NetworkLinkData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const auth = useAuth();
@@ -107,6 +107,8 @@ export function useNetworkData(
   authRef.current = auth;
 
   useEffect(() => {
+    if (entityId === null) return;
+
     let cancelled = false;
     setLoading(true);
     setError(null);

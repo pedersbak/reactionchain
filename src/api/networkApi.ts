@@ -41,9 +41,7 @@ export class ApiError extends Error {
   }
 }
 
-const BASE_URL = import.meta.env.DEV
-  ? "/api/cvr"
-  : "https://netvrk.nu/cvradapter";
+const BASE_URL = "/api/cvr";
 
 /**
  * Fetch network data for a given CVR entity.

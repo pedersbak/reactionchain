@@ -19,7 +19,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onRegisterClick }) => {
     <div style={styles.page}>
       <div style={styles.logo}>
         <NetworkIcon size={36} animated />
-        <span style={styles.logoText}>ReactionChain</span>
+        <span style={styles.logoText}>netvrk.nu</span>
       </div>
       <LoginForm onSubmit={handleSubmit} onRegisterClick={onRegisterClick} />
     </div>
@@ -33,7 +33,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    background: "#f5f6f8",
+    background: "#0d1117",
     gap: "1.5rem",
     padding: "2rem",
   },
@@ -45,7 +45,7 @@ const styles: Record<string, React.CSSProperties> = {
   logoText: {
     fontSize: "1.25rem",
     fontWeight: 700,
-    color: "#1a1a1a",
+    color: "#e2e8f0",
     letterSpacing: "-0.02em",
   },
 };

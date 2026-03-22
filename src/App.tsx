@@ -4,7 +4,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { NetworkTestPage } from "./pages/NetworkTestPage";
 
-const AUTH_BASE_URL = import.meta.env.DEV ? "/api/auth" : "https://netvrk.nu";
+const AUTH_BASE_URL = "/api/auth";
 
 type AuthPage = "login" | "register";
 
@@ -22,37 +22,37 @@ const AppRoutes: React.FC = () => {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
-      {/* Minimal top bar */}
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: "#0d1117" }}>
+      {/* Top bar */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           padding: "0.6rem 2rem",
-          borderBottom: "1px solid #e0e3e8",
-          background: "#fff",
+          borderBottom: "1px solid #1e2638",
+          background: "#0d1117",
           fontSize: 13,
-          color: "#555",
+          color: "#8892a4",
           flexShrink: 0,
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <NetworkIcon size={22} animated />
-          <strong style={{ color: "#1a1a1a" }}>ReactionChain</strong>
+          <strong style={{ color: "#e2e8f0", letterSpacing: "-0.01em" }}>netvrk.nu</strong>
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          {user?.email && <span>{user.email}</span>}
+          {user?.email && <span style={{ color: "#8892a4" }}>{user.email}</span>}
           <button
             onClick={logout}
             style={{
               background: "none",
-              border: "1px solid #d0d5dd",
+              border: "1px solid #2a3347",
               borderRadius: 6,
               padding: "4px 12px",
               cursor: "pointer",
               fontSize: 12,
-              color: "#555",
+              color: "#8892a4",
             }}
           >
             Sign out
