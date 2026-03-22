@@ -9,6 +9,11 @@ WORKDIR /app
 COPY iris-ui/ ./iris-ui/
 COPY . ./reactionchain/
 
+# Install deps for iris-ui first so React types are available when
+# TypeScript compiles iris-ui source files from reactionchain's build.
+WORKDIR /app/iris-ui
+RUN npm install
+
 WORKDIR /app/reactionchain
 RUN npm install
 RUN npm run build
