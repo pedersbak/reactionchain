@@ -3,6 +3,8 @@ import { AuthProvider, useAuth, NetworkIcon } from "iris-ui";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { NetworkTestPage } from "./pages/NetworkTestPage";
+import { MobileNetworkPage } from "./pages/MobileNetworkPage";
+import { useIsMobile } from "./hooks/useIsMobile";
 
 const AUTH_BASE_URL = "/api/auth";
 
@@ -12,6 +14,7 @@ type AuthPage = "login" | "register";
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [authPage, setAuthPage] = useState<AuthPage>("login");
+  const isMobile = useIsMobile();
 
   if (!isAuthenticated) {
     return authPage === "login" ? (
@@ -29,7 +32,7 @@ const AppRoutes: React.FC = () => {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0.6rem 2rem",
+          padding: isMobile ? "0.5rem 0.75rem" : "0.6rem 2rem",
           borderBottom: "1px solid #1e2638",
           background: "#0d1117",
           fontSize: 13,
@@ -42,7 +45,7 @@ const AppRoutes: React.FC = () => {
           <strong style={{ color: "#e2e8f0", letterSpacing: "-0.01em" }}>netvrk.nu</strong>
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          {user?.email && <span style={{ color: "#8892a4" }}>{user.email}</span>}
+          {!isMobile && user?.email && <span style={{ color: "#8892a4" }}>{user.email}</span>}
           <button
             onClick={logout}
             style={{
@@ -59,7 +62,7 @@ const AppRoutes: React.FC = () => {
           </button>
         </span>
       </div>
-      <NetworkTestPage />
+      {isMobile ? <MobileNetworkPage /> : <NetworkTestPage />}
     </div>
   );
 };
