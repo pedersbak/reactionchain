@@ -26,6 +26,7 @@ type SheetState = "hidden" | "peek" | "open";
 export const MobileNetworkPage: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const [entityId, setEntityId] = useState<number | null>(null);
+  const [depth, setDepth] = useState(DEFAULT_DEPTH);
   const [selectedNode, setSelectedNode] = useState<NetworkNodeData | null>(null);
   const [sheetState, setSheetState] = useState<SheetState>("hidden");
   const [secondaryOpen, setSecondaryOpen] = useState(false);
@@ -76,7 +77,7 @@ export const MobileNetworkPage: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const { nodes, links, loading, error } = useNetworkData(entityId, DEFAULT_DEPTH);
+  const { nodes, links, loading, error } = useNetworkData(entityId, depth);
 
   useEffect(() => {
     if (loading || nodes.length === 0 || entityId === null) return;
@@ -254,6 +255,14 @@ export const MobileNetworkPage: React.FC = () => {
             >
               {loading ? "…" : "Go"}
             </button>
+          </div>
+
+          {/* Depth stepper */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+            <span style={{ fontSize: 13, color: "#8892a4", fontWeight: 600 }}>Depth</span>
+            <button onClick={() => setDepth((d) => Math.max(1, d - 1))} disabled={loading || depth <= 1} style={stepperBtn}>−</button>
+            <span style={{ minWidth: 18, textAlign: "center", fontSize: 14, fontWeight: 700, color: "#e2e8f0" }}>{depth}</span>
+            <button onClick={() => setDepth((d) => Math.min(2, d + 1))} disabled={loading || depth >= 2} style={stepperBtn}>+</button>
           </div>
 
           {showSuggestions && (
@@ -487,4 +496,21 @@ const sectionLabel: React.CSSProperties = {
   textTransform: "uppercase",
   letterSpacing: "0.07em",
   marginBottom: 8,
+};
+
+const stepperBtn: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  borderRadius: 6,
+  border: "1px solid #2a3347",
+  background: "#161b27",
+  cursor: "pointer",
+  fontSize: 17,
+  lineHeight: 1,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 700,
+  color: "#e2e8f0",
+  padding: 0,
 };
