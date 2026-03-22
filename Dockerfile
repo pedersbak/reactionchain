@@ -4,9 +4,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy both packages (iris-ui is needed at build time only)
-COPY iris-ui/ ./iris-ui/
-COPY reactionchain/ ./reactionchain/
+# The build context is the reactionchain folder itself.
+# iris-ui is a git submodule at iris-ui/ inside this repo.
+COPY . ./reactionchain/
 
 WORKDIR /app/reactionchain
 RUN npm install
