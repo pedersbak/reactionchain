@@ -27,6 +27,7 @@ export const MobileNetworkPage: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const [entityId, setEntityId] = useState<number | null>(null);
   const [depth, setDepth] = useState(DEFAULT_DEPTH);
+  const [includeHistoric, setIncludeHistoric] = useState(false);
   const [selectedNode, setSelectedNode] = useState<NetworkNodeData | null>(null);
   const [sheetState, setSheetState] = useState<SheetState>("hidden");
   const [secondaryOpen, setSecondaryOpen] = useState(false);
@@ -66,7 +67,7 @@ export const MobileNetworkPage: React.FC = () => {
     });
   }, [debouncedInput]);
 
-  const { nodes, links, loading, error } = useNetworkData(entityId, depth);
+  const { nodes, links, loading, error } = useNetworkData(entityId, depth, includeHistoric);
 
   useEffect(() => {
     if (loading || nodes.length === 0 || entityId === null) return;
@@ -247,12 +248,26 @@ export const MobileNetworkPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Depth stepper */}
+          {/* Depth stepper + historic toggle */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
             <span style={{ fontSize: 13, color: "#8892a4", fontWeight: 600 }}>Depth</span>
             <button onClick={() => setDepth((d) => Math.max(1, d - 1))} disabled={loading || depth <= 1} style={stepperBtn}>−</button>
             <span style={{ minWidth: 18, textAlign: "center", fontSize: 14, fontWeight: 700, color: "#e2e8f0" }}>{depth}</span>
             <button onClick={() => setDepth((d) => Math.min(2, d + 1))} disabled={loading || depth >= 2} style={stepperBtn}>+</button>
+            <button
+              onClick={() => setIncludeHistoric((h) => !h)}
+              title="Include historic relations"
+              style={{
+                marginLeft: 4,
+                padding: "4px 10px", borderRadius: 6,
+                border: includeHistoric ? "1px solid #4f9cf9" : "1px solid #2a3347",
+                background: includeHistoric ? "#0e1e3d" : "#161b27",
+                color: includeHistoric ? "#4f9cf9" : "#8892a4",
+                cursor: "pointer", fontSize: 12, fontWeight: 600,
+              }}
+            >
+              Historic
+            </button>
           </div>
 
           {showSuggestions && (

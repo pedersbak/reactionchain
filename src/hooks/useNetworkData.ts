@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import type { NetworkNodeData, NetworkLinkData } from "iris-ui";
+import type { NetworkNodeData, NetworkLinkData, RelationEntry } from "iris-ui";
 import { useAuth } from "iris-ui";
 import { fetchNetwork, ApiError } from "../api/networkApi";
 import type { CvrNetworkResponse } from "../api/networkApi";
@@ -58,12 +58,16 @@ export function transformCvrResponse(data: CvrNetworkResponse): {
 
   // Deduplicate relations → one link per unique (FromId, ToId) pair.
   // Collect all FUNKTION RelationValues as the labels array.
-  const linkMap = new Map<string, NetworkLinkData>();
+  // A link is "historic" when ALL its relations have a past GyldigTil.
+  const linkMap = new Map<string, NetworkLinkData & { _hasCurrent: boolean; _relations: RelationEntry[] }>();
+
+  const now = new Date();
 
   for (const rel of data.relations) {
     const key = `${rel.FromId}->${rel.ToId}`;
     const existing = linkMap.get(key);
     const isFunktion = rel.RelationType === "FUNKTION" && rel.RelationValue;
+    const isCurrent = !rel.GyldigTil || new Date(rel.GyldigTil) > now;
 
     if (!existing) {
       linkMap.set(key, {
@@ -73,16 +77,34 @@ export function transformCvrResponse(data: CvrNetworkResponse): {
         labels: isFunktion ? [rel.RelationValue!] : [],
         color: "#c5cdd6",
         strokeWidth: 1.5,
+        _hasCurrent: isCurrent,
+        _relations: isFunktion
+          ? [{ label: rel.RelationValue!, from: rel.GyldigFra, to: rel.GyldigTil }]
+          : [],
       });
-    } else if (isFunktion && !existing.labels?.includes(rel.RelationValue!)) {
-      linkMap.set(key, {
-        ...existing,
-        labels: [...(existing.labels ?? []), rel.RelationValue!],
-      });
+    } else {
+      if (isFunktion) {
+        // Always add as a separate entry (dates may differ even for the same label)
+        existing._relations.push({ label: rel.RelationValue!, from: rel.GyldigFra, to: rel.GyldigTil });
+        // Keep labels[] as unique display strings for the edge pill
+        if (!existing.labels?.includes(rel.RelationValue!)) {
+          existing.labels = [...(existing.labels ?? []), rel.RelationValue!];
+        }
+      }
+      if (isCurrent) existing._hasCurrent = true;
     }
   }
 
-  return { nodes, links: Array.from(linkMap.values()) };
+  // Apply historic styling to links where no relation is currently active.
+  const links: NetworkLinkData[] = Array.from(linkMap.values()).map(({ _hasCurrent, _relations, ...link }) => {
+    const base = { ...link, relations: _relations };
+    if (!_hasCurrent) {
+      return { ...base, color: "#7c6f3e", strokeDasharray: "5 4", strokeWidth: 1.5 };
+    }
+    return base;
+  });
+
+  return { nodes, links };
 }
 
 export interface UseNetworkDataResult {
@@ -94,7 +116,8 @@ export interface UseNetworkDataResult {
 
 export function useNetworkData(
   entityId: number | null,
-  depth = 2
+  depth = 2,
+  includeHistoric = false
 ): UseNetworkDataResult {
   const [nodes, setNodes] = useState<NetworkNodeData[]>([]);
   const [links, setLinks] = useState<NetworkLinkData[]>([]);
@@ -126,7 +149,7 @@ export function useNetworkData(
       return;
     }
 
-    fetchNetwork(entityId, token, depth)
+    fetchNetwork(entityId, token, depth, includeHistoric)
       .catch(async (err: unknown) => {
         // On 401, try to refresh and retry once
         if (err instanceof ApiError && err.status === 401) {
@@ -135,7 +158,7 @@ export function useNetworkData(
             logout();
             throw new Error("Session expired. Please log in again.");
           }
-          return fetchNetwork(entityId, newTokens.token, depth);
+          return fetchNetwork(entityId, newTokens.token, depth, includeHistoric);
         }
         throw err;
       })
@@ -160,7 +183,7 @@ export function useNetworkData(
     };
   // Re-run when the token changes (e.g. user just logged in or token was refreshed).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityId, depth, auth.tokens?.token]);
+  }, [entityId, depth, includeHistoric, auth.tokens?.token]);
 
   return { nodes, links, loading, error };
 }

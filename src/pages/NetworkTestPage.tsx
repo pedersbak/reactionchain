@@ -27,6 +27,7 @@ export const NetworkTestPage: React.FC = () => {
   const [inputValue, setInputValue] = useState("");
   const [entityId, setEntityId] = useState<number | null>(null);
   const [depth, setDepth] = useState(DEFAULT_DEPTH);
+  const [includeHistoric, setIncludeHistoric] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
   const [selectedNode, setSelectedNode] = useState<NetworkNodeData | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -68,7 +69,7 @@ export const NetworkTestPage: React.FC = () => {
     });
   }, [debouncedInput]);
 
-  const { nodes, links, loading, error } = useNetworkData(entityId, depth);
+  const { nodes, links, loading, error } = useNetworkData(entityId, depth, includeHistoric);
 
   // Auto-select the searched entity once nodes are loaded.
   useEffect(() => {
@@ -398,6 +399,20 @@ export const NetworkTestPage: React.FC = () => {
                   <button onClick={() => setDepth((d) => Math.max(1, d - 1))} disabled={loading || depth <= 1} style={stepperBtn}>−</button>
                   <span style={{ minWidth: 16, textAlign: "center", fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{depth}</span>
                   <button onClick={() => setDepth((d) => Math.min(2, d + 1))} disabled={loading || depth >= 2} style={stepperBtn}>+</button>
+                  <button
+                    onClick={() => setIncludeHistoric((h) => !h)}
+                    title="Include historic relations"
+                    style={{
+                      marginLeft: 4,
+                      padding: "3px 9px", borderRadius: 5,
+                      border: includeHistoric ? "1px solid #4f9cf9" : "1px solid #2a3347",
+                      background: includeHistoric ? "#0e1e3d" : "#161b27",
+                      color: includeHistoric ? "#4f9cf9" : "#8892a4",
+                      cursor: "pointer", fontSize: 11, fontWeight: 600,
+                    }}
+                  >
+                    Historic
+                  </button>
                   <button
                     onClick={handleLoad}
                     disabled={loading}

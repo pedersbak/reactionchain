@@ -20,6 +20,8 @@ export interface CvrRelation {
   ToId: number;
   RelationType: string;
   RelationValue: string | null;
+  GyldigFra: string | null;
+  GyldigTil: string | null;
 }
 
 export interface CvrNetworkResponse {
@@ -50,14 +52,18 @@ const BASE_URL = "/api/cvr";
 export async function fetchNetwork(
   entityId: number,
   token: string,
-  depth = 2
+  depth = 2,
+  includeHistoric = false
 ): Promise<CvrNetworkResponse> {
-  const res = await fetch(`${BASE_URL}/${entityId}?depth=${depth}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
+  const res = await fetch(
+    `${BASE_URL}/${entityId}?depth=${depth}&includeHistoric=${includeHistoric}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
 
   if (!res.ok) {
     throw new ApiError(res.status, `CVR API error ${res.status}: ${res.statusText}`);
