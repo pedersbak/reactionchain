@@ -1,0 +1,33 @@
+{
+  "_source": true,
+  "query": {
+    "bool": {
+      "filter": {
+        "terms": {
+          "Vrvirksomhed.cvrNummer": [0]
+        }
+      },
+      "must": [
+        {
+          "nested": {
+            "path": "Vrvirksomhed.virksomhedsstatus",
+            "query": {
+              "bool": {
+                "must": [
+                  {
+                    "match": {
+                      "Vrvirksomhed.virksomhedsstatus.status": "NORMAL"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "must_not": [],
+      "should": []
+    }
+  },
+  "size": 1
+}

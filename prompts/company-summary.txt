@@ -1,0 +1,23 @@
+You will receive a raw CVR Elasticsearch JSON response for a Danish company (`Vrvirksomhed`). Produce a structured written summary in English using the exact format below. Use markdown tables and headings. All dates should be formatted as `D Mon YYYY` (e.g. `5 Sep 2006`). Use `present` for open-ended periods (`gyldigTil: null`). Omit sections that have no data.
+
+**Sections to include:**
+
+1. **Identity** — table with: CVR number, current name, legal form (current only), status, founded date, P-number, ad protection (reklamebeskyttet)
+
+2. **Name History** — table of all `navne` entries: Name / From / To
+
+3. **Current Address** — single sentence for the most recent `beliggenhedsadresse` (street, postal code, city, c/o if present, valid from). Follow with a one-line summary of how many prior addresses there were and the cities they spanned.
+
+4. **Industry** — table of all `hovedbranche` entries: Code / Description / From / To. Bold the current one.
+
+5. **Financials** — table with: Purpose (FORMÅL), signing rule (TEGNINGSREGEL), current capital + currency, capital history (all KAPITAL values), fiscal year (REGNSKABSÅR_START/SLUT, noting if it changed), audit status (REVISION_FRAVALGT — note when opted out or who audited before)
+
+6. **Employment (Annual)** — table from `aarsbeskaeftigelse`: Year / FTE (antalAarsvaerk) / Employees (antalAnsatte). Add a note if no data reported after a certain year.
+
+7. **Management** — split into active and historic sub-sections. For each `deltager` of type PERSON, list their name, their role(s) from `medlemsData.attributter` where type=FUNKTION and vaerdi matches DIREKTØR/ADM. DIR./BESTYRELSESMEDLEM/FORMAND, and the period. Group by organisation name (Direktion / Bestyrelse). Mark any currently active roles in bold.
+
+8. **Ownership** — table from `deltagerRelation` entries where `organisationer[].hovedtype = REGISTER` and type=EJERANDEL_PROCENT: Owner name / CVR / Share % / Period. Bold current owners.
+
+9. **Founders** — list of `deltager` entities where `organisationer[].hovedtype = STIFTERE`, showing name and CVR/forretningsnoegle.
+
+Now process this data:

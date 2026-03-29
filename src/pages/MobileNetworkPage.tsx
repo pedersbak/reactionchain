@@ -1,9 +1,10 @@
 import React, { useState, KeyboardEvent, useEffect, useRef, useMemo } from "react";
-import { NetworkGraph, useDebounce } from "iris-ui";
+import { NetworkGraph, useDebounce, useAuth, ReportModal, AiReportButton } from "iris-ui";
 import type { NetworkNodeData, NetworkLinkData } from "iris-ui";
 import { useNetworkData, GRAPH_DIMENSIONS } from "../hooks/useNetworkData";
 import { suggestCvr } from "../api/suggestApi";
 import type { CvrSuggestion } from "../api/suggestApi";
+import { fetchAiReport } from "../api/reportApi";
 
 const DEFAULT_DEPTH = 1;
 
@@ -31,6 +32,12 @@ export const MobileNetworkPage: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<NetworkNodeData | null>(null);
   const [sheetState, setSheetState] = useState<SheetState>("hidden");
   const [secondaryOpen, setSecondaryOpen] = useState(false);
+  const [reportMarkdown, setReportMarkdown] = useState<string | null>(null);
+  const [reportTitle, setReportTitle] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  const { tokens } = useAuth();
 
   const [suggestions, setSuggestions] = useState<CvrSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -167,7 +174,7 @@ export const MobileNetworkPage: React.FC = () => {
     return { primaryRelations: primary, secondaryRelations: secondary };
   }, [entityId, nodes, links, nodeDistances]);
 
-  useEffect(() => { setSecondaryOpen(false); }, [entityId]);
+  useEffect(() => { setSecondaryOpen(false); setReportError(null); }, [entityId]);
 
   const renderRelCard = (r: RelEntry) => (
     <div
@@ -212,6 +219,7 @@ export const MobileNetworkPage: React.FC = () => {
   const sheetHeight = sheetState === "hidden" ? 0 : sheetState === "peek" ? PEEK_HEIGHT : OPEN_HEIGHT;
 
   return (
+    <>
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative", overflow: "hidden" }}>
 
       {/* Search bar */}
@@ -260,9 +268,9 @@ export const MobileNetworkPage: React.FC = () => {
               style={{
                 marginLeft: 4,
                 padding: "4px 10px", borderRadius: 6,
-                border: includeHistoric ? "1px solid #4f9cf9" : "1px solid #2a3347",
-                background: includeHistoric ? "#0e1e3d" : "#161b27",
-                color: includeHistoric ? "#4f9cf9" : "#8892a4",
+                border: includeHistoric ? "1px dashed #a89450" : "1px solid #2a3347",
+                background: includeHistoric ? "#1e1a0d" : "#161b27",
+                color: includeHistoric ? "#a89450" : "#8892a4",
                 cursor: "pointer", fontSize: 12, fontWeight: 600,
               }}
             >
@@ -430,7 +438,7 @@ export const MobileNetworkPage: React.FC = () => {
             <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 32px" }}>
 
               {/* Entity type + CVR badge */}
-              <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{
                   fontSize: 11, fontWeight: 700,
                   textTransform: "uppercase", letterSpacing: "0.07em",
@@ -443,7 +451,32 @@ export const MobileNetworkPage: React.FC = () => {
                 <span style={{ fontSize: 12, color: "#8892a4", fontFamily: "monospace" }}>
                   {selectedNode.id}
                 </span>
+                <AiReportButton
+                  loading={reportLoading}
+                  onClick={async () => {
+                    if (!tokens?.token) return;
+                    const type = selectedNode.type === "person" ? "person" : "company";
+                    const id = parseInt(selectedNode.id, 10);
+                    setReportTitle(selectedNode.label);
+                    setReportLoading(true);
+                    setReportMarkdown(null);
+                    setReportError(null);
+                    try {
+                      const md = await fetchAiReport(type, id, tokens.token);
+                      setReportMarkdown(md);
+                    } catch {
+                      setReportError("Rapporten kunne ikke hentes. Prøv igen om lidt.");
+                    } finally {
+                      setReportLoading(false);
+                    }
+                  }}
+                />
               </div>
+              {reportError && (
+                <div style={{ fontSize: 11, color: "#f87171", marginBottom: 10 }}>
+                  ⚠ {reportError}
+                </div>
+              )}
 
               {/* Primary relations */}
               {primaryRelations.length > 0 && (
@@ -492,6 +525,15 @@ export const MobileNetworkPage: React.FC = () => {
         </div>
       )}
     </div>
+
+    {reportMarkdown && (
+      <ReportModal
+        title={reportTitle}
+        markdown={reportMarkdown}
+        onClose={() => setReportMarkdown(null)}
+      />
+    )}
+    </>
   );
 };
 

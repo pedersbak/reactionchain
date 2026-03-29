@@ -1,9 +1,10 @@
 import React, { useState, KeyboardEvent, useEffect, useRef, useMemo } from "react";
-import { NetworkGraph, useDebounce } from "iris-ui";
+import { NetworkGraph, useDebounce, useAuth, ReportModal, AiReportButton } from "iris-ui";
 import type { NetworkNodeData, NetworkLinkData } from "iris-ui";
 import { useNetworkData, GRAPH_DIMENSIONS } from "../hooks/useNetworkData";
 import { suggestCvr } from "../api/suggestApi";
 import type { CvrSuggestion } from "../api/suggestApi";
+import { fetchAiReport } from "../api/reportApi";
 
 const DEFAULT_DEPTH = 1;
 const PANEL_WIDTH = 308;
@@ -32,6 +33,12 @@ export const NetworkTestPage: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<NetworkNodeData | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [secondaryOpen, setSecondaryOpen] = useState(false);
+  const [reportMarkdown, setReportMarkdown] = useState<string | null>(null);
+  const [reportTitle, setReportTitle] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  const { tokens } = useAuth();
 
   const [suggestions, setSuggestions] = useState<CvrSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -172,7 +179,7 @@ export const NetworkTestPage: React.FC = () => {
   }, [entityId, nodes, links, nodeDistances]);
 
   // Collapse secondary section whenever the searched entity changes.
-  useEffect(() => { setSecondaryOpen(false); }, [entityId]);
+  useEffect(() => { setSecondaryOpen(false); setReportError(null); }, [entityId]);
 
   const renderRelCard = (r: RelEntry) => (
     <div
@@ -214,6 +221,7 @@ export const NetworkTestPage: React.FC = () => {
   );
 
   return (
+    <>
     <div style={{ display: "flex", flex: 1, overflow: "auto", padding: "1rem", flexDirection: "column" }}>
 
       {error && (
@@ -405,9 +413,9 @@ export const NetworkTestPage: React.FC = () => {
                     style={{
                       marginLeft: 4,
                       padding: "3px 9px", borderRadius: 5,
-                      border: includeHistoric ? "1px solid #4f9cf9" : "1px solid #2a3347",
-                      background: includeHistoric ? "#0e1e3d" : "#161b27",
-                      color: includeHistoric ? "#4f9cf9" : "#8892a4",
+                      border: includeHistoric ? "1px dashed #a89450" : "1px solid #2a3347",
+                      background: includeHistoric ? "#1e1a0d" : "#161b27",
+                      color: includeHistoric ? "#a89450" : "#8892a4",
                       cursor: "pointer", fontSize: 11, fontWeight: 600,
                     }}
                   >
@@ -451,9 +459,36 @@ export const NetworkTestPage: React.FC = () => {
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#e2e8f0", marginBottom: 3, lineHeight: 1.35 }}>
                       {selectedNode.label}
                     </div>
-                    <div style={{ fontSize: 11, color: "#8892a4", marginBottom: 14, fontFamily: "monospace" }}>
-                      {selectedNode.id}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                      <div style={{ fontSize: 11, color: "#8892a4", fontFamily: "monospace" }}>
+                        {selectedNode.id}
+                      </div>
+                      <AiReportButton
+                        loading={reportLoading}
+                        onClick={async () => {
+                          if (!tokens?.token) return;
+                          const type = selectedNode.type === "person" ? "person" : "company";
+                          const id = parseInt(selectedNode.id, 10);
+                          setReportTitle(selectedNode.label);
+                          setReportLoading(true);
+                          setReportMarkdown(null);
+                          setReportError(null);
+                          try {
+                            const md = await fetchAiReport(type, id, tokens.token);
+                            setReportMarkdown(md);
+                          } catch {
+                            setReportError("Rapporten kunne ikke hentes. Prøv igen om lidt.");
+                          } finally {
+                            setReportLoading(false);
+                          }
+                        }}
+                      />
                     </div>
+                    {reportError && (
+                      <div style={{ fontSize: 11, color: "#f87171", marginBottom: 10 }}>
+                        ⚠ {reportError}
+                      </div>
+                    )}
 
                     {(primaryRelations.length > 0 || secondaryRelations.length > 0) && (
                       <>
@@ -525,6 +560,15 @@ export const NetworkTestPage: React.FC = () => {
         </div>
       )}
     </div>
+
+    {reportMarkdown && (
+      <ReportModal
+        title={reportTitle}
+        markdown={reportMarkdown}
+        onClose={() => setReportMarkdown(null)}
+      />
+    )}
+    </>
   );
 };
 

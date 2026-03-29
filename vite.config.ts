@@ -42,6 +42,10 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (p) => p.replace(/^\/api\/suggest/, "/suggest"),
         },
+        "/api/AiReport": {
+          target: cvrTarget,
+          changeOrigin: true,
+        },
       },
     },
   };
