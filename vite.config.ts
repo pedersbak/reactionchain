@@ -22,6 +22,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      hmr: {
+        protocol: "wss",
+        host: "netvrk.nu",
+        clientPort: 443,
+      },
       proxy: {
         "/api/auth": {
           target: "https://netvrk.nu",
