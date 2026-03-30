@@ -66,6 +66,12 @@ export async function fetchNetwork(
   );
 
   if (!res.ok) {
+    if (res.status >= 500) {
+      throw new ApiError(
+        res.status,
+        `virk.dk oplever problemer lige nu (fejl ${res.status}). Prøv igen om lidt.`
+      );
+    }
     throw new ApiError(res.status, `CVR API error ${res.status}: ${res.statusText}`);
   }
 

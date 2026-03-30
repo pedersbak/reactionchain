@@ -171,7 +171,12 @@ export function useNetworkData(
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unknown error");
+          // Network-level failure (DNS, timeout, etc.) — virk.dk is unreachable
+          if (!(err instanceof ApiError)) {
+            setError("virk.dk kan ikke nås lige nu. Tjek din forbindelse eller prøv igen om lidt.");
+          } else {
+            setError(err.message);
+          }
         }
       })
       .finally(() => {
