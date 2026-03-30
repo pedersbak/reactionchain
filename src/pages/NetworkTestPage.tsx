@@ -76,7 +76,8 @@ export const NetworkTestPage: React.FC = () => {
     });
   }, [debouncedInput]);
 
-  const { nodes, links, loading, error } = useNetworkData(entityId, depth, includeHistoric);
+  const [reloadKey, setReloadKey] = useState(0);
+  const { nodes, links, loading, error } = useNetworkData(entityId, depth, includeHistoric, reloadKey);
 
   // Auto-select the searched entity once nodes are loaded.
   useEffect(() => {
@@ -87,7 +88,10 @@ export const NetworkTestPage: React.FC = () => {
 
   const handleLoad = () => {
     const parsed = parseInt(inputValue.trim(), 10);
-    if (!isNaN(parsed)) setEntityId(parsed);
+    if (!isNaN(parsed)) {
+      setEntityId(parsed);
+      setReloadKey((k) => k + 1);
+    }
     setShowSuggestions(false);
   };
 

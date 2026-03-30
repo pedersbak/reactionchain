@@ -117,7 +117,8 @@ export interface UseNetworkDataResult {
 export function useNetworkData(
   entityId: number | null,
   depth = 2,
-  includeHistoric = false
+  includeHistoric = false,
+  reloadKey = 0
 ): UseNetworkDataResult {
   const [nodes, setNodes] = useState<NetworkNodeData[]>([]);
   const [links, setLinks] = useState<NetworkLinkData[]>([]);
@@ -188,7 +189,7 @@ export function useNetworkData(
     };
   // Re-run when the token changes (e.g. user just logged in or token was refreshed).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityId, depth, includeHistoric, auth.tokens?.token]);
+  }, [entityId, depth, includeHistoric, reloadKey, auth.tokens?.token]);
 
   return { nodes, links, loading, error };
 }
