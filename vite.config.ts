@@ -13,6 +13,13 @@ export default defineConfig(({ mode }) => {
   const cvrTarget = env.CVR_TARGET ?? "https://netvrk.nu";
   const cvrLocalDev = !!env.CVR_TARGET;
 
+  // Only override HMR when explicitly running behind a remote reverse-proxy
+  // (e.g. set HMR_HOST=netvrk.nu in .env.local for SSH-tunnelled dev).
+  // Leave undefined for normal local development so Vite uses its defaults.
+  const hmr = env.HMR_HOST
+    ? { protocol: "wss" as const, host: env.HMR_HOST, clientPort: 443 }
+    : undefined;
+
   return {
     plugins: [react()],
     resolve: {
@@ -22,11 +29,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      hmr: {
-        protocol: "wss",
-        host: "netvrk.nu",
-        clientPort: 443,
-      },
+      hmr,
       proxy: {
         "/api/auth": {
           target: "https://netvrk.nu",
