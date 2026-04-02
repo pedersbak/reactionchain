@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        // Resolve iris-ui directly from its TypeScript source so no build step is needed.
-        "iris-ui": path.resolve(__dirname, "../iris-ui/src"),
+        // Resolve iris-ui from the submodule inside this repo.
+        "iris-ui": path.resolve(__dirname, "iris-ui/src"),
       },
     },
     server: {
