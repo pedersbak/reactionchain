@@ -16,8 +16,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "iris-ui": ["../iris-ui/src"],
-      "iris-ui/*": ["../iris-ui/src/*"]
+      "iris-ui": ["./iris-ui/src"],
+      "iris-ui/*": ["./iris-ui/src/*"]
     }
   },
   "include": ["src"],
