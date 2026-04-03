@@ -1,7 +1,8 @@
-import React, { useState, KeyboardEvent, useEffect, useRef, useMemo } from "react";
-import { NetworkGraph, useDebounce, useAuth, ReportModal, AiReportButton } from "iris-ui";
+import React, { useState, KeyboardEvent, useEffect, useRef } from "react";
+import { NetworkGraph, useDebounce, useAuth, ReportModal, AiReportButton, MobileCardView } from "iris-ui";
 import type { NetworkNodeData, NetworkLinkData } from "iris-ui";
-import { useNetworkData, GRAPH_DIMENSIONS } from "../hooks/useNetworkData";
+import { useExpandableGraph } from "../hooks/useExpandableGraph";
+import { GRAPH_DIMENSIONS } from "../hooks/useNetworkData";
 import { suggestCvr } from "../api/suggestApi";
 import type { CvrSuggestion } from "../api/suggestApi";
 import { fetchAiReport } from "../api/reportApi";
@@ -30,13 +31,14 @@ export const NetworkTestPage: React.FC = () => {
   const [depth, setDepth] = useState(DEFAULT_DEPTH);
   const [includeHistoric, setIncludeHistoric] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
-  const [selectedNode, setSelectedNode] = useState<NetworkNodeData | null>(null);
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const [secondaryOpen, setSecondaryOpen] = useState(false);
   const [reportMarkdown, setReportMarkdown] = useState<string | null>(null);
   const [reportTitle, setReportTitle] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+
+  // Card drill-down history stack — array of node IDs
+  const [cardHistory, setCardHistory] = useState<string[]>([]);
+  const currentCardId = cardHistory[cardHistory.length - 1] ?? null;
 
   const { tokens } = useAuth();
 
@@ -44,6 +46,7 @@ export const NetworkTestPage: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const userTypedRef = useRef(false);
+  const historyInitEntityRef = useRef<number | null>(null);
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [graphSize, setGraphSize] = useState<{ w: number; h: number }>({ w: GRAPH_DIMENSIONS.width, h: GRAPH_DIMENSIONS.height });
 
@@ -76,21 +79,56 @@ export const NetworkTestPage: React.FC = () => {
     });
   }, [debouncedInput]);
 
-  const [reloadKey, setReloadKey] = useState(0);
-  const { nodes, links, loading, error } = useNetworkData(entityId, depth, includeHistoric, reloadKey);
+  const { nodes, links, loading, navLoading, error, expandNode } = useExpandableGraph(entityId, depth, includeHistoric);
 
-  // Auto-select the searched entity once nodes are loaded.
+  // Initialise card history when a new entity's data first arrives.
   useEffect(() => {
-    if (loading || nodes.length === 0 || entityId === null) return;
-    const primary = nodes.find((n) => n.id === String(entityId));
-    if (primary) setSelectedNode(primary);
-  }, [entityId, nodes, loading]);
+    if (entityId !== null && !loading && nodes.length > 0 && historyInitEntityRef.current !== entityId) {
+      historyInitEntityRef.current = entityId;
+      setCardHistory([String(entityId)]);
+      setReportError(null);
+    }
+  }, [entityId, loading, nodes.length]);
+
+  // Build the filtered graph for the visualisation:
+  // • The path links (one link per consecutive breadcrumb pair) + their nodes
+  // • All direct links of the current card node + their nodes
+  const { graphNodes, graphLinks } = React.useMemo(() => {
+    if (!currentCardId || nodes.length === 0) return { graphNodes: nodes, graphLinks: links };
+
+    const visibleNodeIds = new Set<string>();
+    const visibleLinkIds = new Set<string>();
+
+    // 1. Path: keep breadcrumb nodes + one link connecting each consecutive pair
+    cardHistory.forEach((id) => visibleNodeIds.add(id));
+    for (let i = 0; i < cardHistory.length - 1; i++) {
+      const a = cardHistory[i];
+      const b = cardHistory[i + 1];
+      const pathLink = links.find(
+        (l) => (l.sourceId === a && l.targetId === b) || (l.sourceId === b && l.targetId === a)
+      );
+      if (pathLink) visibleLinkIds.add(pathLink.id);
+    }
+
+    // 2. Current node's direct neighbourhood
+    for (const l of links) {
+      if (l.sourceId === currentCardId || l.targetId === currentCardId) {
+        visibleLinkIds.add(l.id);
+        visibleNodeIds.add(l.sourceId);
+        visibleNodeIds.add(l.targetId);
+      }
+    }
+
+    return {
+      graphNodes: nodes.filter((n) => visibleNodeIds.has(n.id)),
+      graphLinks: links.filter((l) => visibleLinkIds.has(l.id)),
+    };
+  }, [currentCardId, cardHistory, nodes, links]);
 
   const handleLoad = () => {
     const parsed = parseInt(inputValue.trim(), 10);
     if (!isNaN(parsed)) {
       setEntityId(parsed);
-      setReloadKey((k) => k + 1);
     }
     setShowSuggestions(false);
   };
@@ -103,14 +141,9 @@ export const NetworkTestPage: React.FC = () => {
     setShowSuggestions(false);
   };
 
-  const handleNodeClick = (node: NetworkNodeData) => {
-    setSelectedNode(node);
-    const parsed = parseInt(node.id, 10);
-    if (!isNaN(parsed)) {
-      userTypedRef.current = false;
-      setInputValue(node.id);
-      setEntityId(parsed);
-    }
+  const handleNodeClick = async (node: NetworkNodeData) => {
+    await expandNode(node.id);
+    setCardHistory((h) => [...h, node.id]);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -131,98 +164,9 @@ export const NetworkTestPage: React.FC = () => {
     }
   };
 
-  type RelEntry = { id: string; otherId: string; otherName: string; otherType: string; labels: string[] };
-
-  // BFS distances from entityId across the full visible graph.
-  const nodeDistances = useMemo(() => {
-    if (entityId === null || nodes.length === 0) return new Map<string, number>();
-    const pid = String(entityId);
-    const dist = new Map<string, number>();
-    dist.set(pid, 0);
-    const queue = [pid];
-    const adj = new Map<string, string[]>();
-    for (const l of links) {
-      if (!adj.has(l.sourceId)) adj.set(l.sourceId, []);
-      if (!adj.has(l.targetId)) adj.set(l.targetId, []);
-      adj.get(l.sourceId)!.push(l.targetId);
-      adj.get(l.targetId)!.push(l.sourceId);
-    }
-    while (queue.length > 0) {
-      const curr = queue.shift()!;
-      const d = dist.get(curr)!;
-      for (const nb of (adj.get(curr) ?? [])) {
-        if (!dist.has(nb)) { dist.set(nb, d + 1); queue.push(nb); }
-      }
-    }
-    return dist;
-  }, [entityId, nodes, links]);
-
-  // All visible graph nodes (except entityId itself) split by distance.
-  const { primaryRelations, secondaryRelations } = useMemo<{ primaryRelations: RelEntry[]; secondaryRelations: RelEntry[] }>(() => {
-    if (entityId === null) return { primaryRelations: [], secondaryRelations: [] };
-    const pid = String(entityId);
-    const primary: RelEntry[] = [];
-    const secondary: RelEntry[] = [];
-    for (const n of nodes) {
-      if (n.id === pid) continue;
-      const dist = nodeDistances.get(n.id) ?? 99;
-      const directLink = links.find(
-        (l) => (l.sourceId === pid && l.targetId === n.id) || (l.targetId === pid && l.sourceId === n.id)
-      );
-      const entry: RelEntry = {
-        id: `rel-${n.id}`,
-        otherId: n.id,
-        otherName: n.label,
-        otherType: n.type,
-        labels: directLink ? (directLink.labels ?? (directLink.label ? [directLink.label] : [])) : [],
-      };
-      if (dist === 1) primary.push(entry);
-      else secondary.push(entry);
-    }
-    return { primaryRelations: primary, secondaryRelations: secondary };
-  }, [entityId, nodes, links, nodeDistances]);
-
-  // Collapse secondary section whenever the searched entity changes.
-  useEffect(() => { setSecondaryOpen(false); setReportError(null); }, [entityId]);
-
-  const renderRelCard = (r: RelEntry) => (
-    <div
-      key={r.id}
-      onClick={() => {
-        const parsed = parseInt(r.otherId, 10);
-        if (!isNaN(parsed)) {
-          userTypedRef.current = false;
-          setInputValue(r.otherId);
-          setEntityId(parsed);
-        }
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "#1e2638")}
-      onMouseLeave={(e) => (e.currentTarget.style.background = hoveredNodeId === r.otherId ? "#1e2638" : "#0d1117")}
-      style={{
-        padding: "7px 10px", borderRadius: 7,
-        background: hoveredNodeId === r.otherId ? "#1e2638" : "#0d1117",
-        border: hoveredNodeId === r.otherId ? "1px solid #4f9cf9" : "1px solid #2a3347",
-        cursor: "pointer",
-        transition: "background 0.15s ease, border-color 0.15s ease",
-      }}
-    >
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#e2e8f0", marginBottom: r.labels.length > 0 ? 4 : 0 }}>
-        {r.otherName}
-      </div>
-      {r.labels.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-          {r.labels.map((lbl, li) => (
-            <span key={li} style={{
-              fontSize: 10, padding: "1px 6px", borderRadius: 3,
-              background: "#0e1e3d", color: "#4f9cf9", fontWeight: 600,
-            }}>
-              {lbl}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  // Derive current node from the top of the card history stack
+  const currentNode: NetworkNodeData | null =
+    currentCardId ? (nodes.find((n) => n.id === currentCardId) ?? null) : null;
 
   return (
     <>
@@ -267,13 +211,12 @@ export const NetworkTestPage: React.FC = () => {
               <div style={entityId === null ? { opacity: 0.15, filter: "grayscale(1) blur(1.5px)", pointerEvents: "none" } : {}}>
                 <div style={{ transform: `scale(${scale})`, transformOrigin: "top left", width: GRAPH_DIMENSIONS.width, height: GRAPH_DIMENSIONS.height }}>
                   <NetworkGraph
-                    nodes={entityId === null ? MOCK_NODES : nodes}
-                    links={entityId === null ? MOCK_LINKS : links}
+                    nodes={entityId === null ? MOCK_NODES : graphNodes}
+                    links={entityId === null ? MOCK_LINKS : graphLinks}
                     width={GRAPH_DIMENSIONS.width}
                     height={GRAPH_DIMENSIONS.height}
                     onNodeClick={handleNodeClick}
-                    onNodeHover={(n) => setHoveredNodeId(n?.id ?? null)}
-                    primaryNodeId={entityId !== null ? String(entityId) : undefined}
+                    primaryNodeId={currentCardId ?? (entityId !== null ? String(entityId) : undefined)}
                   />
                 </div>
               </div>
@@ -443,108 +386,108 @@ export const NetworkTestPage: React.FC = () => {
 
               <div style={{ borderTop: "1px solid #1e2638", margin: "0 1rem" }} />
 
-              {/* Entity details section */}
-              <div style={{ padding: "1rem", flex: 1 }}>
-                <div style={sectionLabel}>Entity details</div>
+              {/* Card drill-down section */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
 
-                {selectedNode ? (
-                  <div>
-                    <div style={{ marginBottom: 6 }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700,
-                        textTransform: "uppercase", letterSpacing: "0.07em",
-                        padding: "2px 8px", borderRadius: 4,
-                        background: selectedNode.type === "person" ? "#2a2310" : "#0e1e3d",
-                        color: selectedNode.type === "person" ? "#f6c90e" : "#4f9cf9",
-                      }}>
-                        {selectedNode.type}
-                      </span>
-                    </div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#e2e8f0", marginBottom: 3, lineHeight: 1.35 }}>
-                      {selectedNode.label}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                      <div style={{ fontSize: 11, color: "#8892a4", fontFamily: "monospace" }}>
-                        {selectedNode.id}
-                      </div>
-                      <AiReportButton
-                        loading={reportLoading}
-                        onClick={async () => {
-                          if (!tokens?.token) return;
-                          const type = selectedNode.type === "person" ? "person" : "company";
-                          const id = parseInt(selectedNode.id, 10);
-                          setReportTitle(selectedNode.label);
-                          setReportLoading(true);
-                          setReportMarkdown(null);
-                          setReportError(null);
-                          try {
-                            const md = await fetchAiReport(type, id, tokens.token);
-                            setReportMarkdown(md);
-                          } catch {
-                            setReportError("Rapporten kunne ikke hentes. Prøv igen om lidt.");
-                          } finally {
-                            setReportLoading(false);
-                          }
-                        }}
-                      />
-                    </div>
+                {/* Breadcrumb trail */}
+                {cardHistory.length > 1 && (
+                  <div style={{ padding: "8px 12px 0", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                    {cardHistory.map((id, i) => {
+                      const n = nodes.find((nd) => nd.id === id);
+                      const isLast = i === cardHistory.length - 1;
+                      return (
+                        <React.Fragment key={`${id}-${i}`}>
+                          <button
+                            onClick={() => !isLast && setCardHistory(cardHistory.slice(0, i + 1))}
+                            style={{
+                              background: "none", border: "none", padding: "1px 3px",
+                              fontSize: 10, color: isLast ? "#e2e8f0" : "#4f9cf9",
+                              cursor: isLast ? "default" : "pointer",
+                              fontWeight: isLast ? 700 : 400,
+                              maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            }}
+                          >
+                            {n?.label ?? id}
+                          </button>
+                          {!isLast && <span style={{ color: "#4b5563", fontSize: 10 }}>›</span>}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Back button */}
+                {cardHistory.length > 1 && (
+                  <button
+                    onClick={() => setCardHistory((h) => h.slice(0, -1))}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "6px 14px", background: "none",
+                      border: "none", borderBottom: "1px solid #1e2638",
+                      color: "#4f9cf9", fontSize: 12, fontWeight: 600,
+                      cursor: "pointer", textAlign: "left", width: "100%",
+                    }}
+                  >
+                    ← Tilbage
+                  </button>
+                )}
+
+                {/* Nav loading indicator */}
+                {navLoading && (
+                  <div style={{ padding: "5px 14px", background: "#0a1628", borderBottom: "1px solid #1e2638", fontSize: 11, color: "#4f9cf9" }}>
+                    Henter relationer…
+                  </div>
+                )}
+
+                {/* Card view */}
+                {currentCardId && (
+                  <div style={{ flex: 1, overflowY: "auto" }}>
+                    <MobileCardView
+                      rootId={currentCardId}
+                      nodes={nodes}
+                      links={links}
+                      onNavigate={async (nodeId) => {
+                        await expandNode(nodeId);
+                        setCardHistory((h) => [...h, nodeId]);
+                      }}
+                      onShowRadial={() => {}}
+                      hideRadialButton
+                      actionSlot={
+                        currentNode ? (
+                          <AiReportButton
+                            loading={reportLoading}
+                            onClick={async () => {
+                              if (!tokens?.token || !currentNode) return;
+                              const type = currentNode.type === "person" ? "person" : "company";
+                              const id = parseInt(currentNode.id, 10);
+                              setReportTitle(currentNode.label);
+                              setReportLoading(true);
+                              setReportMarkdown(null);
+                              setReportError(null);
+                              try {
+                                const md = await fetchAiReport(type, id, tokens.token);
+                                setReportMarkdown(md);
+                              } catch {
+                                setReportError("Rapporten kunne ikke hentes. Prøv igen.");
+                              } finally {
+                                setReportLoading(false);
+                              }
+                            }}
+                          />
+                        ) : undefined
+                      }
+                    />
                     {reportError && (
-                      <div style={{ fontSize: 11, color: "#f87171", marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, color: "#f87171", padding: "4px 14px" }}>
                         ⚠ {reportError}
                       </div>
                     )}
-
-                    {(primaryRelations.length > 0 || secondaryRelations.length > 0) && (
-                      <>
-                        {/* Primary relations — depth 1 from the searched node */}
-                        {primaryRelations.length > 0 && (
-                          <>
-                            <div style={{ ...sectionLabel, marginBottom: 8 }}>
-                              Primary&nbsp;
-                              <span style={{ color: "#4b5563", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 11 }}>
-                                ({primaryRelations.length})
-                              </span>
-                            </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: secondaryRelations.length > 0 ? 12 : 0 }}>
-                              {primaryRelations.map(renderRelCard)}
-                            </div>
-                          </>
-                        )}
-
-                        {/* Secondary relations — depth > 1 from the searched node, collapsible */}
-                        {secondaryRelations.length > 0 && (
-                          <>
-                            <button
-                              onClick={() => setSecondaryOpen((o) => !o)}
-                              style={{
-                                display: "flex", alignItems: "center",
-                                background: "none", border: "none", padding: "0 0 8px",
-                                cursor: "pointer", width: "100%",
-                              }}
-                            >
-                              <span style={{ ...sectionLabel, marginBottom: 0 }}>
-                                Secondary&nbsp;
-                                <span style={{ color: "#4b5563", fontWeight: 400, textTransform: "none", letterSpacing: 0, fontSize: 11 }}>
-                                  ({secondaryRelations.length})
-                                </span>
-                              </span>
-                              <span style={{ marginLeft: "auto", color: "#4f9cf9", fontSize: 11 }}>
-                                {secondaryOpen ? "▾" : "▸"}
-                              </span>
-                            </button>
-                            {secondaryOpen && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                                {secondaryRelations.map(renderRelCard)}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </>
-                    )}
                   </div>
-                ) : (
+                )}
+
+                {!currentCardId && (
                   <div style={{ fontSize: 12, color: "#4b5563", textAlign: "center", marginTop: 32 }}>
-                    Click a node to see details
+                    Click a node to explore
                   </div>
                 )}
               </div>

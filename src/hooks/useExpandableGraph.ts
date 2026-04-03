@@ -7,6 +7,9 @@ import { transformCvrResponse } from "./useNetworkData";
 export interface UseExpandableGraphResult {
   nodes: NetworkNodeData[];
   links: NetworkLinkData[];
+  /** Frozen snapshot of the initial entity's graph — safe to pass to NetworkGraph (stable coordinates). */
+  graphNodes: NetworkNodeData[];
+  graphLinks: NetworkLinkData[];
   /** True while the initial entity load is in progress. */
   loading: boolean;
   /** True while a per-navigation depth-1 fetch is in progress. */
@@ -27,6 +30,8 @@ export function useExpandableGraph(
 ): UseExpandableGraphResult {
   const [nodeMap, setNodeMap] = useState(new Map<string, NetworkNodeData>());
   const [linkMap, setLinkMap] = useState(new Map<string, NetworkLinkData>());
+  const [graphNodes, setGraphNodes] = useState<NetworkNodeData[]>([]);
+  const [graphLinks, setGraphLinks] = useState<NetworkLinkData[]>([]);
   const [loading, setLoading] = useState(false);
   const [navLoading, setNavLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +80,8 @@ export function useExpandableGraph(
     setError(null);
     setNodeMap(new Map());
     setLinkMap(new Map());
+    setGraphNodes([]);
+    setGraphLinks([]);
 
     const { tokens, refreshTokens, logout } = authRef.current;
     const token = tokens?.token;
@@ -100,6 +107,9 @@ export function useExpandableGraph(
         // Only the root entity counts as "expanded" — depth-1 neighbours
         // may have connections outside this graph that we haven't fetched yet.
         expandedRef.current = new Set([String(entityId)]);
+        // Freeze the graph-view snapshot — stable layout coordinates only from initial fetch.
+        setGraphNodes(n);
+        setGraphLinks(l);
         mergeResults(n, l);
       })
       .catch((err: unknown) => {
@@ -154,6 +164,8 @@ export function useExpandableGraph(
   return {
     nodes: Array.from(nodeMap.values()),
     links: Array.from(linkMap.values()),
+    graphNodes,
+    graphLinks,
     loading,
     navLoading,
     error,

@@ -191,7 +191,7 @@ export const MobileNetworkPage: React.FC = () => {
                   const n = nodes.find((nd) => nd.id === id);
                   const isLast = i === cardHistory.length - 1;
                   return (
-                    <React.Fragment key={id}>
+                    <React.Fragment key={`${id}-${i}`}>
                       <button
                         onClick={() => !isLast && setCardHistory(cardHistory.slice(0, i + 1))}
                         style={{
