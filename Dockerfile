@@ -2,16 +2,16 @@
 # Build stage — resolves iris-ui via path alias, outputs dist/
 # =============================================================
 FROM node:20-alpine AS builder
-WORKDIR /app
+WORKDIR /app/reactionchain
 
-# Copy iris-ui submodule to ../iris-ui relative to reactionchain/
-# so the vite alias "iris-ui" → "../iris-ui/src" resolves correctly.
+# Copy iris-ui submodule into reactionchain/iris-ui so the vite
+# alias "iris-ui" → "./iris-ui/src" resolves correctly.
 COPY iris-ui/ ./iris-ui/
-COPY . ./reactionchain/
+COPY . .
 
 # Install deps for iris-ui first so React types are available when
 # TypeScript compiles iris-ui source files from reactionchain's build.
-WORKDIR /app/iris-ui
+WORKDIR /app/reactionchain/iris-ui
 RUN npm install
 
 WORKDIR /app/reactionchain
