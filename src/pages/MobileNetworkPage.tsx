@@ -1,7 +1,7 @@
 import React, { useState, KeyboardEvent, useEffect, useRef } from "react";
 import { useDebounce, useAuth, ReportModal, AiReportButton, MobileCardView, MobileRadialView } from "iris-ui";
 import type { NetworkNodeData } from "iris-ui";
-import { useNetworkData } from "../hooks/useNetworkData";
+import { useExpandableGraph } from "../hooks/useExpandableGraph";
 import { suggestCvr } from "../api/suggestApi";
 import type { CvrSuggestion } from "../api/suggestApi";
 import { fetchAiReport } from "../api/reportApi";
@@ -32,6 +32,9 @@ export const MobileNetworkPage: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const userTypedRef = useRef(false);
+  // Track which entityId the card history was last initialised for, so that
+  // merging new nodes (which changes nodes.length) doesn't re-trigger the reset.
+  const historyInitEntityRef = useRef<number | null>(null);
 
   const debouncedInput = useDebounce(inputValue, 250);
 
@@ -47,11 +50,14 @@ export const MobileNetworkPage: React.FC = () => {
     });
   }, [debouncedInput]);
 
-  const { nodes, links, loading, error } = useNetworkData(entityId, depth, includeHistoric);
+  const { nodes, links, loading, navLoading, error, expandNode } = useExpandableGraph(entityId, depth, includeHistoric);
 
-  // When a new entity loads, reset the drill-down history to that entity
+  // When a new entity loads for the first time, initialise the drill-down history.
+  // We guard with historyInitEntityRef so that subsequent node expansions (which
+  // also increase nodes.length) don't reset the history back to the root.
   useEffect(() => {
-    if (entityId !== null && !loading && nodes.length > 0) {
+    if (entityId !== null && !loading && nodes.length > 0 && historyInitEntityRef.current !== entityId) {
+      historyInitEntityRef.current = entityId;
       setCardHistory([String(entityId)]);
       setViewMode("cards");
       setReportError(null);
@@ -90,7 +96,8 @@ export const MobileNetworkPage: React.FC = () => {
     }
   };
 
-  const handleCardNavigate = (nodeId: string) => {
+  const handleCardNavigate = async (nodeId: string) => {
+    await expandNode(nodeId);
     setCardHistory((h) => [...h, nodeId]);
   };
 
@@ -281,6 +288,11 @@ export const MobileNetworkPage: React.FC = () => {
                   ← Tilbage
                 </button>
               )}
+              {navLoading && (
+                <div style={{ padding: "7px 16px", background: "#0a1628", borderBottom: "1px solid #1e2638", fontSize: 12, color: "#4f9cf9", flexShrink: 0 }}>
+                  Henter relationer…
+                </div>
+              )}
               <div style={{ flex: 1, overflowY: "auto" }}>
                 <MobileCardView
                   rootId={currentCardId!}
@@ -301,7 +313,8 @@ export const MobileNetworkPage: React.FC = () => {
               rootId={currentCardId!}
               nodes={nodes}
               links={links}
-              onNavigate={(nodeId) => {
+              onNavigate={async (nodeId) => {
+                await expandNode(nodeId);
                 setCardHistory((h) => [...h, nodeId]);
                 setViewMode("cards");
               }}
