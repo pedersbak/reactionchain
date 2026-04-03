@@ -4,10 +4,11 @@
 FROM node:20-alpine AS builder
 WORKDIR /app/reactionchain
 
-# Copy iris-ui submodule into reactionchain/iris-ui so the vite
-# alias "iris-ui" → "./iris-ui/src" resolves correctly.
-COPY iris-ui/ ./iris-ui/
+# Copy app files first, then overwrite iris-ui submodule with actual
+# content — ensures it's populated even if the submodule wasn't
+# initialised in the build context.
 COPY . .
+COPY iris-ui/ ./iris-ui/
 
 # Install deps for iris-ui first so React types are available when
 # TypeScript compiles iris-ui source files from reactionchain's build.
@@ -26,7 +27,7 @@ FROM nginx:alpine
 RUN rm /etc/nginx/conf.d/default.conf
 
 RUN printf 'server {\n\
-    listen 5173;\n\
+    listen 0.0.0.0:5173;\n\
     root /usr/share/nginx/html;\n\
     index index.html;\n\
 \n\
