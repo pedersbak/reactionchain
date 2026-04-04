@@ -45,6 +45,45 @@ export class ApiError extends Error {
 
 const BASE_URL = "/api/cvr";
 
+export interface LayoutRequest {
+  entities: Array<{ id: number; name: string; type: number }>;
+  relations: Array<{ FromId: number; ToId: number }>;
+}
+
+/**
+ * Request a consistent graph layout for an arbitrary set of nodes and links.
+ * Returns a map of entityId (string) → [nx, ny] in normalised [-1, 1] range.
+ */
+export async function fetchLayout(
+  request: LayoutRequest,
+  token: string,
+): Promise<Record<string, [number, number]>> {
+  const res = await fetch("/api/layout", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!res.ok) {
+    throw new ApiError(res.status, `Layout API error ${res.status}`);
+  }
+
+  // The layout endpoint may return one of several shapes:
+  //   { Layout: { "id": [x, y] } }              — direct layout map
+  //   { layout: { Layout: { "id": [x, y] } } }  — CvrPassthrough / CvrAdapter shape
+  //   { "id": [x, y] }                           — bare map
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = await res.json() as any;
+  const layoutMap: Record<string, [number, number]> =
+    data?.Layout ??
+    data?.layout?.Layout ??
+    data;
+  return layoutMap;
+}
+
 /**
  * Fetch network data for a given CVR entity.
  * @param token - Bearer token from the auth context.

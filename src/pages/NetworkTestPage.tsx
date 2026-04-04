@@ -79,7 +79,7 @@ export const NetworkTestPage: React.FC = () => {
     });
   }, [debouncedInput]);
 
-  const { nodes, links, loading, navLoading, error, expandNode } = useExpandableGraph(entityId, depth, includeHistoric);
+  const { nodes, links, loading, navLoading, error, layoutRevision, expandNode } = useExpandableGraph(entityId, depth, includeHistoric);
 
   // Initialise card history when a new entity's data first arrives.
   useEffect(() => {
@@ -91,8 +91,8 @@ export const NetworkTestPage: React.FC = () => {
   }, [entityId, loading, nodes.length]);
 
   // Build the filtered graph for the visualisation:
-  // • The path links (one link per consecutive breadcrumb pair) + their nodes
-  // • All direct links of the current card node + their nodes
+  // • The breadcrumb path (one link per consecutive pair)
+  // • All nodes/links within `depth` hops of the current card node
   const { graphNodes, graphLinks } = React.useMemo(() => {
     if (!currentCardId || nodes.length === 0) return { graphNodes: nodes, graphLinks: links };
 
@@ -110,20 +110,31 @@ export const NetworkTestPage: React.FC = () => {
       if (pathLink) visibleLinkIds.add(pathLink.id);
     }
 
-    // 2. Current node's direct neighbourhood
-    for (const l of links) {
-      if (l.sourceId === currentCardId || l.targetId === currentCardId) {
+    // 2. BFS outward from currentCardId up to `depth` hops
+    let frontier = new Set<string>([currentCardId]);
+    visibleNodeIds.add(currentCardId);
+    for (let hop = 0; hop < depth; hop++) {
+      const nextFrontier = new Set<string>();
+      for (const l of links) {
+        const fromFrontier = frontier.has(l.sourceId) || frontier.has(l.targetId);
+        if (!fromFrontier) continue;
         visibleLinkIds.add(l.id);
-        visibleNodeIds.add(l.sourceId);
-        visibleNodeIds.add(l.targetId);
+        [l.sourceId, l.targetId].forEach((id) => {
+          if (!visibleNodeIds.has(id)) {
+            visibleNodeIds.add(id);
+            nextFrontier.add(id);
+          }
+        });
       }
+      frontier = nextFrontier;
+      if (frontier.size === 0) break;
     }
 
     return {
       graphNodes: nodes.filter((n) => visibleNodeIds.has(n.id)),
       graphLinks: links.filter((l) => visibleLinkIds.has(l.id)),
     };
-  }, [currentCardId, cardHistory, nodes, links]);
+  }, [currentCardId, cardHistory, depth, nodes, links]);
 
   const handleLoad = () => {
     const parsed = parseInt(inputValue.trim(), 10);
@@ -142,7 +153,8 @@ export const NetworkTestPage: React.FC = () => {
   };
 
   const handleNodeClick = async (node: NetworkNodeData) => {
-    await expandNode(node.id);
+    setInputValue(node.id);
+    await expandNode(node.id, 1);
     setCardHistory((h) => [...h, node.id]);
   };
 
@@ -217,6 +229,7 @@ export const NetworkTestPage: React.FC = () => {
                     height={GRAPH_DIMENSIONS.height}
                     onNodeClick={handleNodeClick}
                     primaryNodeId={currentCardId ?? (entityId !== null ? String(entityId) : undefined)}
+                    layoutRevision={layoutRevision}
                   />
                 </div>
               </div>
@@ -355,7 +368,18 @@ export const NetworkTestPage: React.FC = () => {
                   <span style={{ minWidth: 16, textAlign: "center", fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{depth}</span>
                   <button onClick={() => setDepth((d) => Math.min(2, d + 1))} disabled={loading || depth >= 2} style={stepperBtn}>+</button>
                   <button
-                    onClick={() => setIncludeHistoric((h) => !h)}
+                    onClick={() => {
+                      // If the user has navigated away from the root entity, make the
+                      // current card the new root so the re-fetch keeps their context.
+                      if (currentCardId && currentCardId !== String(entityId)) {
+                        const focusedId = parseInt(currentCardId, 10);
+                        if (!isNaN(focusedId)) {
+                          setEntityId(focusedId);
+                          setInputValue(currentCardId);
+                        }
+                      }
+                      setIncludeHistoric((h) => !h);
+                    }}
                     title="Include historic relations"
                     style={{
                       marginLeft: 4,
@@ -447,7 +471,8 @@ export const NetworkTestPage: React.FC = () => {
                       nodes={nodes}
                       links={links}
                       onNavigate={async (nodeId) => {
-                        await expandNode(nodeId);
+                        setInputValue(nodeId);
+                        await expandNode(nodeId, 1);
                         setCardHistory((h) => [...h, nodeId]);
                       }}
                       onShowRadial={() => {}}

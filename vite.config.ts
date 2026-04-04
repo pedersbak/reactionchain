@@ -54,6 +54,10 @@ export default defineConfig(({ mode }) => {
           target: cvrTarget,
           changeOrigin: true,
         },
+        "/api/layout": {
+          target: cvrTarget,
+          changeOrigin: true,
+        },
       },
     },
   };

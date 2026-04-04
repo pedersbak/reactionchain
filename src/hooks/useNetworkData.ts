@@ -7,7 +7,7 @@ import type { CvrNetworkResponse } from "../api/networkApi";
 /** Fixed canvas size used both for layout mapping and for NetworkGraph dimensions. */
 export const GRAPH_DIMENSIONS = { width: 1650, height: 1080 } as const;
 
-const PADDING = 90; // px inset so no node touches the edge
+export const PADDING = 90; // px inset so no node touches the edge
 const NODE_SIZE = 48; // must match iris-ui NODE_SIZE
 
 function mapEntityType(type: number, id: number): "person" | "company" {
@@ -22,7 +22,7 @@ function mapEntityType(type: number, id: number): "person" | "company" {
  * The result is the node's top-left corner so the icon circle is centred on
  * the original coordinate.
  */
-function normalizedToCanvas(
+export function normalizedToCanvas(
   v: number,
   canvasSize: number,
   padding: number
@@ -64,7 +64,11 @@ export function transformCvrResponse(data: CvrNetworkResponse): {
   const now = new Date();
 
   for (const rel of data.relations) {
-    const key = `${rel.FromId}->${rel.ToId}`;
+    // Normalise to an undirected key so A→B and B→A merge into the same entry.
+    const [lo, hi] = rel.FromId < rel.ToId
+      ? [rel.FromId, rel.ToId]
+      : [rel.ToId, rel.FromId];
+    const key = `${lo}<->${hi}`;
     const existing = linkMap.get(key);
     const isFunktion = rel.RelationType === "FUNKTION" && rel.RelationValue;
     const isCurrent = !rel.GyldigTil || new Date(rel.GyldigTil) > now;
