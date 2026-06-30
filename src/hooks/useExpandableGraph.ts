@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { NetworkNodeData, NetworkLinkData } from "iris-ui";
 import { useAuth } from "iris-ui";
 import { fetchNetwork, fetchLayout, ApiError } from "../api/networkApi";
@@ -222,9 +222,14 @@ export function useExpandableGraph(
     }
   }, []);
 
+  // Memoize arrays so consumers get stable references between renders —
+  // a new array is only created when the underlying map state actually changes.
+  const nodes = useMemo(() => Array.from(nodeMap.values()), [nodeMap]);
+  const links = useMemo(() => Array.from(linkMap.values()), [linkMap]);
+
   return {
-    nodes: Array.from(nodeMap.values()),
-    links: Array.from(linkMap.values()),
+    nodes,
+    links,
     graphNodes,
     graphLinks,
     loading,

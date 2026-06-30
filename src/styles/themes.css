@@ -1,0 +1,89 @@
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── THEME: OBSIDIAN (default / :root) ── */
+:root,
+[data-theme="obsidian"] {
+  --bg-page:         #0E1621;
+  --bg-sidebar:      #131F2E;
+  --bg-topbar:       #131F2E;
+  --bg-card:         #1A2740;
+  --bg-input:        #0E1621;
+  --border:          #243247;
+  --accent:          #F4A92A;
+  --accent-light:    #2C2210;
+  --accent-btn:      #F4A92A;
+  --accent-btn-text: #0E1621;
+  --text-primary:    #E8EDF5;
+  --text-secondary:  #8CA0BC;
+  --text-muted:      #4A6070;
+  --positive:        #2EC98E;
+  --logo-color:      #F4A92A;
+  --shadow:          0 2px 8px rgba(0,0,0,.4);
+}
+
+/* ── THEME: ARCTIC ── */
+[data-theme="arctic"] {
+  --bg-page:         #F0F4FF;
+  --bg-sidebar:      #FFFFFF;
+  --bg-topbar:       #FFFFFF;
+  --bg-card:         #FFFFFF;
+  --bg-input:        #F7F9FF;
+  --border:          #D8E2F8;
+  --accent:          #2255D6;
+  --accent-light:    #E8F0FE;
+  --accent-btn:      #2255D6;
+  --accent-btn-text: #FFFFFF;
+  --text-primary:    #0D1B3E;
+  --text-secondary:  #5A6A8A;
+  --text-muted:      #9AAAC8;
+  --positive:        #1A9E5C;
+  --logo-color:      #2255D6;
+  --shadow:          0 1px 4px rgba(34,85,214,.08);
+}
+
+/* ── THEME: SAGE ── */
+[data-theme="sage"] {
+  --bg-page:         #F4F6F1;
+  --bg-sidebar:      #FAFBF8;
+  --bg-topbar:       #FAFBF8;
+  --bg-card:         #FFFFFF;
+  --bg-input:        #F5F7F2;
+  --border:          #D6DDD0;
+  --accent:          #3A7D54;
+  --accent-light:    #E2EFE6;
+  --accent-btn:      #3A7D54;
+  --accent-btn-text: #FFFFFF;
+  --text-primary:    #1C2E22;
+  --text-secondary:  #5A7060;
+  --text-muted:      #96AB9A;
+  --positive:        #2D8C50;
+  --logo-color:      #3A7D54;
+  --shadow:          0 1px 4px rgba(58,125,84,.08);
+}
+
+/* ── THEME: PLUM ── */
+[data-theme="plum"] {
+  --bg-page:         #F2EFF8;
+  --bg-sidebar:      #2D1B4E;
+  --bg-topbar:       #FFFFFF;
+  --bg-card:         #FFFFFF;
+  --bg-input:        #F8F5FF;
+  --border:          #DDD4F0;
+  --accent:          #7C3AED;
+  --accent-light:    #EDE9FE;
+  --accent-btn:      #7C3AED;
+  --accent-btn-text: #FFFFFF;
+  --text-primary:    #1A0F2E;
+  --text-secondary:  #6B5B8A;
+  --text-muted:      #A898C8;
+  --positive:        #059669;
+  --logo-color:      #7C3AED;
+  --shadow:          0 1px 4px rgba(124,58,237,.1);
+}
